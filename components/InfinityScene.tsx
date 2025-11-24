@@ -118,6 +118,9 @@ const ProjectileSystem = ({
   theme: 'dark' | 'light'
 }) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
+  const trailRef1 = useRef<THREE.InstancedMesh>(null);
+  const trailRef2 = useRef<THREE.InstancedMesh>(null);
+
   const timeSinceLastSpawn = useRef(0);
   const nextSpawnInterval = useRef(0);
 
@@ -150,10 +153,27 @@ const ProjectileSystem = ({
   }
 
   useFrame((state, delta) => {
-    if (!meshRef.current) return;
+    if (!meshRef.current || !trailRef1.current || !trailRef2.current) return;
 
     const safeDelta = Math.min(delta, 0.1);
     const now = state.clock.elapsedTime;
+
+    // --- Update Trails (Shift History) ---
+    // Copy Trail 1 -> Trail 2
+    trailRef2.current.instanceMatrix.array.set(trailRef1.current.instanceMatrix.array);
+    // Copy Main -> Trail 1
+    trailRef1.current.instanceMatrix.array.set(meshRef.current.instanceMatrix.array);
+
+    trailRef2.current.instanceMatrix.needsUpdate = true;
+    trailRef1.current.instanceMatrix.needsUpdate = true;
+
+    // Copy colors if needed (though they are static per instance usually)
+    if (meshRef.current.instanceColor && trailRef1.current.instanceColor && trailRef2.current.instanceColor) {
+      trailRef2.current.instanceColor.array.set(trailRef1.current.instanceColor.array);
+      trailRef1.current.instanceColor.array.set(meshRef.current.instanceColor.array);
+      trailRef2.current.instanceColor.needsUpdate = true;
+      trailRef1.current.instanceColor.needsUpdate = true;
+    }
 
     // --- Spawning ---
     if (spawnRate > 0) {
@@ -176,7 +196,10 @@ const ProjectileSystem = ({
           const speed = minSpeed + Math.random() * (maxSpeed - minSpeed);
 
           slot.velocity.copy(direction.multiplyScalar(speed));
-          slot.color.set(theme === 'dark' ? '#fbbf24' : '#ef4444');
+
+          // UPDATED COLOR LOGIC
+          slot.color.set(theme === 'dark' ? '#ffffff' : '#1e293b');
+
           slot.scale = 1;
           slot.age = 0;
         }
@@ -361,17 +384,9 @@ const ProjectileSystem = ({
 
       // Update Matrix
       dummy.position.copy(p.position);
-
-      // "Streak" effect: Look at direction of travel and stretch
-      const lookTarget = p.position.clone().add(p.velocity);
-      dummy.lookAt(lookTarget);
-
-      // Stretch based on speed (velocity length)
-      const speedVal = p.velocity.length();
-      const stretch = 1 + Math.min(speedVal * 0.05, 2); // Cap stretch
-      dummy.scale.set(p.scale * 0.5, p.scale * 0.5, p.scale * stretch); // Thinner width, stretched length
-
+      dummy.scale.set(p.scale, p.scale, p.scale);
       dummy.updateMatrix();
+
       meshRef.current.setMatrixAt(i, dummy.matrix);
       meshRef.current.setColorAt(i, p.color);
     }
@@ -381,10 +396,23 @@ const ProjectileSystem = ({
   });
 
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_PROJECTILES]}>
-      <sphereGeometry args={[0.3, 8, 8]} />
-      <meshStandardMaterial emissiveIntensity={2} toneMapped={false} />
-    </instancedMesh>
+    <group>
+      {/* Ghost Trails */}
+      <instancedMesh ref={trailRef2} args={[undefined, undefined, MAX_PROJECTILES]}>
+        <sphereGeometry args={[0.12, 16, 16]} />
+        <meshBasicMaterial transparent opacity={0.1} toneMapped={false} />
+      </instancedMesh>
+      <instancedMesh ref={trailRef1} args={[undefined, undefined, MAX_PROJECTILES]}>
+        <sphereGeometry args={[0.135, 16, 16]} />
+        <meshBasicMaterial transparent opacity={0.25} toneMapped={false} />
+      </instancedMesh>
+
+      {/* Main Projectiles */}
+      <instancedMesh ref={meshRef} args={[undefined, undefined, MAX_PROJECTILES]}>
+        <sphereGeometry args={[0.15, 16, 16]} />
+        <meshStandardMaterial emissiveIntensity={2} toneMapped={false} />
+      </instancedMesh>
+    </group>
   );
 };
 
