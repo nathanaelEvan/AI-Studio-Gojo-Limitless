@@ -6,7 +6,14 @@ import { Sun, Moon, Settings, Activity, Zap, PanelLeftClose, PanelLeftOpen } fro
 const App = () => {
   const [currentTechnique, setCurrentTechnique] = useState<TechniqueType>(TechniqueType.NEUTRAL);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // Initialize collapsed state based on screen width (Mobile/Tablet default to collapsed)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 1024;
+    }
+    return false;
+  });
   
   // Simulation Controls State
   const [spawnRate, setSpawnRate] = useState(3);
@@ -95,7 +102,7 @@ const App = () => {
       <div className={`
         relative z-20 shadow-2xl border-r transition-all duration-500 ease-in-out flex-shrink-0 h-full
         ${isDark ? 'bg-slate-900/95 border-slate-800' : 'bg-white border-slate-200'}
-        ${isSidebarCollapsed ? 'w-[80px]' : 'w-[400px] lg:w-[450px]'}
+        ${isSidebarCollapsed ? 'w-[80px]' : 'w-full md:w-1/2 lg:w-[450px]'}
       `}>
         
         {/* SIDEBAR CONTENT */}
@@ -181,8 +188,8 @@ const App = () => {
                       className={`
                         group relative flex flex-col justify-between p-4 rounded-xl border-2 transition-all duration-300 text-left h-28 overflow-hidden
                         ${currentTechnique === tech.type 
-                          ? (isDark ? `bg-slate-800 ${tech.borderClass}` : `bg-white ${tech.borderClass} shadow-xl scale-[1.02]`)
-                          : (isDark ? 'bg-slate-900/50 border-slate-800 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300')}
+                          ? (isDark ? `bg-slate-700 ${tech.borderClass}` : `bg-white ${tech.borderClass} shadow-lg scale-[1.02]`)
+                          : (isDark ? 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600' : 'bg-slate-50 border-slate-200 hover:bg-white hover:border-slate-300')}
                       `}
                     >
                       {/* Background Hover color */}
